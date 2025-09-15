@@ -1,0 +1,85 @@
+// Notifications Database Schema
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/notifications-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NOTIFICATIONS_DATABASE_URL")
+}
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+  title      String   @db.VarChar(255)
+  message    String   @db.Text
+  department String?  @db.VarChar(100)
+  section    String?  @db.VarChar(50)
+  type       String?  @db.VarChar(50)
+  priority   String   @default("Normal") @db.VarChar(20)
+  targetPortals String[] @default([]) @db.VarChar(50) // e.g., ["student", "staff"]
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([createdAt], map: "idx_notifications_created_at")
+  @@index([isRead], map: "idx_notifications_is_read")
+  @@map("notifications")
+}
+
+
+model StudentNotification {
+  id         Int      @id @default(autoincrement())
+  studentId  Int      @map("student_id")
+  title      String   @db.VarChar(255)
+  message    String   @db.Text
+  department String?  @db.VarChar(100)
+  section    String?  @db.VarChar(50)
+  priority   String   @default("Normal") @db.VarChar(20)
+  type       String   @default("general") @db.VarChar(50)
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([studentId], map: "idx_student_notifications_student_id")
+  @@index([createdAt], map: "idx_student_notifications_created_at")
+  @@index([isRead], map: "idx_student_notifications_is_read")
+  @@map("student_notifications")
+}
+
+model StaffNotification {
+  id         Int      @id @default(autoincrement())
+  staffId    Int      @map("staff_id")
+  title      String   @db.VarChar(255)
+  message    String   @db.Text
+  department String?  @db.VarChar(100)
+  priority   String   @default("Normal") @db.VarChar(20)
+  type       String   @default("general") @db.VarChar(50)
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([staffId], map: "idx_staff_notifications_staff_id")
+  @@index([createdAt], map: "idx_staff_notifications_created_at")
+  @@index([isRead], map: "idx_staff_notifications_is_read")
+  @@map("staff_notifications")
+}
+
+model ParentNotification {
+  id         Int      @id @default(autoincrement())
+  parentId   Int      @map("parent_id")
+  title      String   @db.VarChar(255)
+  message    String   @db.Text
+  department String?  @db.VarChar(100)
+  section    String?  @db.VarChar(50)
+  priority   String   @default("Normal") @db.VarChar(20)
+  type       String   @default("general") @db.VarChar(50)
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([parentId], map: "idx_parent_notifications_parent_id")
+  @@index([createdAt], map: "idx_parent_notifications_created_at")
+  @@index([isRead], map: "idx_parent_notifications_is_read")
+  @@map("parent_notifications")
+}

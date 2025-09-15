@@ -1,0 +1,102 @@
+// Assignment Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/assignment-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("ASSIGNMENT_DATABASE_URL")
+}
+
+model Subject {
+  id           BigInt   @id @default(autoincrement())
+  subject_code String   @unique @db.VarChar(20)
+  name         String   @db.VarChar(100)
+  department   String?  @db.VarChar(50)
+  semester     Int?
+  credits      Int?     @default(3)
+  faculty_id   BigInt?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  // Relations
+  assignments AssignmentTemplate[]
+  student_assignments StudentAssignment[]
+
+  @@map("subjects")
+}
+
+model StudentAssignment {
+  id              BigInt     @id @default(autoincrement())
+  student_id      BigInt     // References existing student database
+  subject_id      BigInt
+  title           String     @db.VarChar(200)
+  description     String?    @db.Text
+  due_date        DateTime
+  submission_link String?    @db.Text
+  status          String     @default("pending") @db.VarChar(20) // pending, submitted, completed, overdue, graded
+  grade           String?    @db.VarChar(10)
+  max_marks       Int?
+  obtained_marks  Int?
+  feedback        String?    @db.Text
+  assigned_by     BigInt?    // Staff ID who assigned
+  submitted_at    DateTime?
+  graded_at       DateTime?
+  created_at      DateTime   @default(now())
+  updated_at      DateTime   @updatedAt
+
+  // Relations
+  subject     Subject                 @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+
+  @@map("student_assignments")
+}
+
+model AssignmentSubmission {
+  id            BigInt   @id @default(autoincrement())
+  assignment_id BigInt
+  file_name     String   @db.VarChar(255)
+  file_path     String   @db.Text
+  file_size     BigInt?
+  file_type     String?  @db.VarChar(50)
+  submitted_at  DateTime @default(now())
+
+  // Relations
+  assignment StudentAssignment @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
+
+  @@map("assignment_submissions")
+}
+
+model StudentNotification {
+  id         BigInt   @id @default(autoincrement())
+  student_id BigInt   // References existing student database
+  title      String   @db.VarChar(200)
+  message    String   @db.Text
+  type       String   @default("General") @db.VarChar(50)
+  is_read    Boolean  @default(false)
+  related_id BigInt?  // Can reference assignment ID
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("student_notifications")
+}
+
+model AssignmentTemplate {
+  id            BigInt   @id @default(autoincrement())
+  title         String   @db.VarChar(200)
+  description   String?  @db.Text
+  subject_id    BigInt?
+  max_marks     Int?     @default(100)
+  duration_days Int?     @default(7)
+  instructions  String?  @db.Text
+  created_by    BigInt?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // Relations
+  subject Subject? @relation(fields: [subject_id], references: [id], onDelete: SetNull)
+
+  @@map("assignment_templates")
+}

@@ -1,0 +1,165 @@
+// Parent Management Database Schema
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/parent-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("PARENT_DATABASE_URL")
+}
+
+model Parent {
+  parent_id      Int      @id @default(autoincrement())
+  first_name     String?  @db.VarChar(50)
+  last_name      String?  @db.VarChar(50)
+  username       String   @unique @db.VarChar(50)
+  password_hash  String?
+  department     String?  @db.VarChar(50)
+  child_email    String?  @unique @db.VarChar(100)
+  contact_number String?  @db.VarChar(15)
+  is_active       Boolean  @default(true)
+  updated_at DateTime @updatedAt 
+
+  children ParentChild[] @relation("ParentToChildren")
+
+  notifications ParentNotification[]
+  meeting       ParentMeeting[]
+
+  @@map("parent")
+}
+
+model ParentChild {
+  id               Int      @id @default(autoincrement())
+  parent_id        Int
+  child_student_id BigInt
+  child_name       String   @db.VarChar(100)
+  child_email      String   @db.VarChar(100)
+  child_department String?  @db.VarChar(50)
+  child_semester   Int?
+  child_section    String?  @db.VarChar(10)
+  is_primary       Boolean  @default(false)
+  created_at       DateTime @default(now())
+
+  parent Parent @relation("ParentToChildren", fields: [parent_id], references: [parent_id], onDelete: Cascade)
+
+  studentDetails Student? @relation("StudentToParentChild", fields: [child_email], references: [email_id])
+
+  @@unique([parent_id, child_student_id])
+  @@map("parent_child")
+}
+
+model ParentNotification {
+  id        Int       @id @default(autoincrement())
+  parent_id Int
+  title     String    @db.VarChar(200)
+  message   String    @db.Text
+  type      String    @db.VarChar(50) // Academic, Attendance, Fee, General
+  priority  String    @default("Normal") @db.VarChar(20) // Low, Normal, High, Urgent
+  is_read   Boolean   @default(false)
+  sent_at   DateTime  @default(now())
+  read_at   DateTime?
+
+  parent Parent @relation(fields: [parent_id], references: [parent_id], onDelete: Cascade)
+
+  @@map("parent_notification")
+}
+
+model ParentMeeting {
+  id           Int      @id @default(autoincrement())
+  parent_id    Int
+  teacher_id   Int?
+  student_id   BigInt
+  meeting_date DateTime
+  purpose      String   @db.VarChar(200)
+  status       String   @default("Scheduled") @db.VarChar(20) // Scheduled, Completed, Cancelled
+  notes        String?  @db.Text
+  created_at   DateTime @default(now())
+
+  parent Parent @relation(fields: [parent_id], references: [parent_id], onDelete: Cascade)
+
+  @@map("parent_meeting")
+}
+
+model Student {
+  student_id      BigInt    @id
+  first_name      String    @db.VarChar(50)
+  last_name       String    @db.VarChar(50)
+  email_id        String    @unique @db.VarChar(100)
+  password_hash   String?
+  contact_number  String    @db.VarChar(15)
+  department      String?   @db.VarChar(50)
+  semester        Int?      @default(1)
+  section         String?   @db.VarChar(10)
+  roll_number     String?   @unique @db.VarChar(20)
+  admission_year  Int?
+  date_of_birth   DateTime? @db.Date
+  address         String?   @db.Text
+  guardian_name   String?   @db.VarChar(100)
+  guardian_phone  String?   @db.VarChar(15)
+  blood_group     String?   @db.VarChar(5)
+  profile_picture String?
+  is_active       Boolean   @default(true)
+  cgpa            Decimal?  @db.Decimal(3, 2)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  parentChild ParentChild[] @relation("StudentToParentChild")
+
+  attendance StudentAttendance[]
+  marks      StudentMarks[]
+  assignment StudentAssignment[]
+
+  @@map("student")
+}
+
+model StudentAttendance {
+  id         Int      @id @default(autoincrement())
+  student_id BigInt
+  subject    String   @db.VarChar(100)
+  date       DateTime @db.Date
+  status     String   @db.VarChar(20) // Present, Absent, Late
+  period     Int?     @default(1)
+  marked_by  String?  @db.VarChar(50)
+  created_at DateTime @default(now())
+
+  student Student @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
+
+  @@unique([student_id, subject, date, period])
+  @@map("student_attendance")
+}
+
+model StudentMarks {
+  id            Int      @id @default(autoincrement())
+  student_id    BigInt
+  subject       String   @db.VarChar(100)
+  exam_type     String   @db.VarChar(50) // Internal, Mid-term, Final, Assignment
+  marks         Decimal  @db.Decimal(5, 2)
+  max_marks     Decimal  @db.Decimal(5, 2)
+  grade         String?  @db.VarChar(5)
+  semester      Int
+  academic_year String   @db.VarChar(10)
+  created_at    DateTime @default(now())
+
+  student Student @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
+
+  @@map("student_marks")
+}
+
+model StudentAssignment {
+  id           Int       @id @default(autoincrement())
+  student_id   BigInt
+  title        String    @db.VarChar(200)
+  subject      String    @db.VarChar(100)
+  description  String?   @db.Text
+  due_date     DateTime
+  status       String    @default("Pending") @db.VarChar(20) // Pending, Submitted, Late, Graded
+  marks        Decimal?  @db.Decimal(5, 2)
+  max_marks    Decimal?  @db.Decimal(5, 2)
+  submitted_at DateTime?
+  created_at   DateTime  @default(now())
+
+  student Student @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
+
+  @@map("student_assignment")
+}

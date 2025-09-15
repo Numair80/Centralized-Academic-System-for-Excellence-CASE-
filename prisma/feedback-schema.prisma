@@ -1,0 +1,115 @@
+// Feedback System Database Schema
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/feedback-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("FEEDBACK_DATABASE_URL")
+}
+
+model Feedback {
+  id           Int      @id @default(autoincrement())
+  name         String?  @db.VarChar(100)
+  email        String?  @db.VarChar(255)
+  user_id      String?  @db.VarChar(50)
+  user_type    String?  @db.VarChar(20) // Student, Faculty, Parent, Anonymous
+  category_id  Int?
+  subject      String?  @db.VarChar(200)
+  message      String   @db.Text
+  rating       Int?     @db.SmallInt // 1-5 rating
+  department   String?  @db.VarChar(100)
+  priority     String   @default("Normal") @db.VarChar(20) // Low, Normal, High, Critical
+  status       String   @default("Open") @db.VarChar(20) // Open, In Progress, Resolved, Closed
+  is_anonymous Boolean  @default(false)
+  attachments  String[] @default([]) // Array of file URLs
+  tags         String[] @default([])
+  assigned_to  String?  @db.VarChar(50)
+  resolved_by  String?  @db.VarChar(50)
+  resolved_at  DateTime?
+  submitted_at DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  category  FeedbackCategory? @relation(fields: [category_id], references: [id])
+  responses FeedbackResponse[]
+
+  @@map("feedback")
+}
+
+model FeedbackCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  color       String?  @db.VarChar(7) // Hex color code
+  icon        String?  @db.VarChar(50)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  feedback Feedback[]
+
+  @@map("feedback_categories")
+}
+
+model FeedbackResponse {
+  id          Int      @id @default(autoincrement())
+  feedback_id Int
+  responder_id String  @db.VarChar(50)
+  responder_name String @db.VarChar(100)
+  responder_type String @db.VarChar(20) // Admin, Faculty, Support
+  message     String   @db.Text
+  is_internal Boolean  @default(false) // Internal notes vs public response
+  attachments String[] @default([])
+  created_at  DateTime @default(now())
+
+  feedback Feedback @relation(fields: [feedback_id], references: [id], onDelete: Cascade)
+
+  @@map("feedback_responses")
+}
+
+model FeedbackSurvey {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(200)
+  description String?  @db.Text
+  questions   Json     // Array of question objects
+  target_audience String @db.VarChar(100)
+  department  String?  @db.VarChar(100)
+  is_active   Boolean  @default(true)
+  start_date  DateTime
+  end_date    DateTime
+  created_by  String   @db.VarChar(50)
+  created_at  DateTime @default(now())
+
+  responses FeedbackSurveyResponse[]
+
+  @@map("feedback_surveys")
+}
+
+model FeedbackSurveyResponse {
+  id        Int      @id @default(autoincrement())
+  survey_id Int
+  user_id   String?  @db.VarChar(50)
+  user_type String?  @db.VarChar(20)
+  responses Json     // Array of answer objects
+  submitted_at DateTime @default(now())
+
+  survey FeedbackSurvey @relation(fields: [survey_id], references: [id], onDelete: Cascade)
+
+  @@unique([survey_id, user_id])
+  @@map("feedback_survey_responses")
+}
+
+model FeedbackAnalytics {
+  id             Int      @id @default(autoincrement())
+  date           DateTime @db.Date
+  total_feedback Int      @default(0)
+  resolved_feedback Int   @default(0)
+  average_rating Decimal? @db.Decimal(3, 2)
+  category_breakdown Json? // Object with category counts
+  department_breakdown Json? // Object with department counts
+  response_time_avg Decimal? @db.Decimal(8, 2) // Average response time in hours
+  created_at     DateTime @default(now())
+
+  @@unique([date])
+  @@map("feedback_analytics")
+}

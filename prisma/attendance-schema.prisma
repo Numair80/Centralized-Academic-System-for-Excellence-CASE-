@@ -1,0 +1,77 @@
+// Attendance Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/attendance-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("ATTENDANCE_DATABASE_URL")
+}
+
+model Subjects {
+  id           BigInt   @id @default(autoincrement())
+  subject_code String   @unique @db.VarChar(20)
+  name         String   @db.VarChar(100)
+  department   String?  @db.VarChar(50)
+  semester     Int?
+  credits      Int?     @default(3)
+  faculty_id   BigInt?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  // Relations
+  attendance StudentAttendance[]
+  summary    AttendanceSummary[]
+
+  @@map("subjects")
+}
+
+model StudentAttendance {
+  id         BigInt   @id @default(autoincrement())
+  student_id BigInt   // References existing student database
+  subject_id BigInt
+  date       DateTime @db.Date
+  status     String   @db.VarChar(20) // Present, Absent, Late
+  remarks    String?  @db.Text
+  marked_by  BigInt?  // Staff ID who marked attendance
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  subject Subjects @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+
+  @@unique([student_id, subject_id, date])
+  @@map("student_attendance")
+}
+
+model StudentNotification {
+  id         BigInt   @id @default(autoincrement())
+  student_id BigInt   // References existing student database
+  title      String   @db.VarChar(200)
+  message    String   @db.Text
+  type       String   @default("General") @db.VarChar(50)
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("student_notifications")
+}
+
+model AttendanceSummary {
+  id                    BigInt   @id @default(autoincrement())
+  student_id            BigInt   // References existing student database
+  subject_id            BigInt
+  total_classes         Int      @default(0)
+  present_classes       Int      @default(0)
+  absent_classes        Int      @default(0)
+  attendance_percentage Decimal  @default(0.00) @db.Decimal(5, 2)
+  last_updated          DateTime @default(now())
+
+  // Relations
+  subject Subjects @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+
+  @@unique([student_id, subject_id])
+  @@map("attendance_summary")
+}

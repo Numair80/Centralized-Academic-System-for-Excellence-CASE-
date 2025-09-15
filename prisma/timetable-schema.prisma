@@ -1,0 +1,172 @@
+// Timetable Database Schema for PostgreSQL
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/timetable-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("TIMETABLE_DATABASE_URL")
+}
+
+model Timetable {
+  id             String   @id @default(cuid())
+  name           String
+  department     String
+  semester       String
+  section        String
+  academic_year  String   @default("2024-25")
+  effective_from DateTime
+  effective_to   DateTime?
+  status         TimetableStatus @default(ACTIVE)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  // Relations
+  entries     TimetableEntry[]
+  assignments TimetableAssignment[]
+  student_assignments StudentTimetable[]
+  staff_assignments   StaffTimetable[]
+  sync_logs   TimetableSyncLog[]
+
+  @@map("timetables")
+}
+
+model TimetableEntry {
+  id            String    @id @default(cuid())
+  timetable_id  String
+  subject       String
+  faculty_id    String?
+  faculty_name  String
+  room          String
+  day_of_week   DayOfWeek
+  period_number Int
+  start_time    String
+  end_time      String
+  class_type    ClassType @default(LECTURE)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  // Relations
+  timetable Timetable @relation(fields: [timetable_id], references: [id], onDelete: Cascade)
+
+  @@map("timetable_entries")
+  @@index([timetable_id])
+  @@index([day_of_week, period_number])
+}
+
+model TimetableAssignment {
+  id                String           @id @default(cuid())
+  timetable_id      String
+  assignment_type   AssignmentType
+  target_department String?
+  target_semester   String?
+  target_section    String?
+  faculty_id        String?
+  faculty_name      String?
+  assigned_at       DateTime         @default(now())
+
+  // Relations
+  timetable Timetable @relation(fields: [timetable_id], references: [id], onDelete: Cascade)
+
+  @@map("timetable_assignments")
+  @@index([timetable_id])
+  @@index([assignment_type])
+}
+
+model StudentTimetable {
+  id            String   @id @default(cuid())
+  student_id    String
+  timetable_id  String
+  department    String
+  semester      String
+  section       String
+  academic_year String
+  assigned_at   DateTime @default(now())
+
+  // Relations
+  timetable Timetable @relation(fields: [timetable_id], references: [id], onDelete: Cascade)
+
+  @@map("student_timetables")
+  @@unique([student_id, timetable_id])
+  @@index([student_id])
+  @@index([timetable_id])
+}
+
+model StaffTimetable {
+  id           String   @id @default(cuid())
+  staff_id     String
+  timetable_id String
+  faculty_name String
+  department   String
+  assigned_at  DateTime @default(now())
+
+  // Relations
+  timetable Timetable @relation(fields: [timetable_id], references: [id], onDelete: Cascade)
+
+  @@map("staff_timetables")
+  @@unique([staff_id, timetable_id])
+  @@index([staff_id])
+  @@index([timetable_id])
+}
+
+model TimetableSyncLog {
+  id           String     @id @default(cuid())
+  timetable_id String
+  action       SyncAction
+  target_portal String
+  sync_status  SyncStatus @default(SUCCESS)
+  sync_details Json?
+  synced_at    DateTime   @default(now())
+
+  // Relations
+  timetable Timetable @relation(fields: [timetable_id], references: [id], onDelete: Cascade)
+
+  @@map("timetable_sync_log")
+  @@index([timetable_id])
+  @@index([synced_at])
+}
+
+// Enums
+enum TimetableStatus {
+  ACTIVE
+  INACTIVE
+  DRAFT
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum ClassType {
+  LECTURE
+  LAB
+  TUTORIAL
+  PRACTICAL
+  SEMINAR
+}
+
+enum AssignmentType {
+  DEPARTMENT
+  FACULTY
+  STUDENT_GROUP
+}
+
+enum SyncAction {
+  CREATE
+  UPDATE
+  DELETE
+  ASSIGN
+}
+
+enum SyncStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
